@@ -13,9 +13,9 @@ class listDataset(Dataset):
             root = root *4
         random.shuffle(root)
         
-        self.nSamples = len(root)
-        self.lines = root
-        self.transform = transform
+        self.nSamples = len(root) #样本总数
+        self.lines = root #保留路径列表，后面用索引访问
+        self.transform = transform 
         self.train = train
         self.shape = shape
         self.seen = seen

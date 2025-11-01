@@ -37,7 +37,10 @@ def load_data(img_path,train = True):
     
     
     
-    target = cv2.resize(target,(target.shape[1]/8,target.shape[0]/8),interpolation = cv2.INTER_CUBIC)*64
+    # resize density map to match CSRNet output stride (1/8 of original resolution)
+    resized_w = max(1, target.shape[1] // 8)
+    resized_h = max(1, target.shape[0] // 8)
+    target = cv2.resize(target, (resized_w, resized_h), interpolation=cv2.INTER_CUBIC) * 64
     
     
     return img,target
