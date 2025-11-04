@@ -1,4 +1,6 @@
 import torch
+import torch.nn.functional as F
+from pathlib import Path
 from PIL import Image
 from torchvision import transforms
 
@@ -8,8 +10,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 
-MODEL_PATH = "0model_best.pth.tar"  # 或其他 checkpoint
-IMAGE_PATH = "/root/autodl-tmp/CSRNet-pytorch/IMG_4.jpg"
+##python infer_single.py
+
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "0model_best.pth.tar"  # 或其他 checkpoint
+IMAGE_PATH = BASE_DIR / "IMG_5.jpg"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -37,7 +42,19 @@ predicted_count = density_map.sum().item()
 print(f"Predicted crowd count: {predicted_count:.2f}")
 
 # 如果需要可视化密度图：
-density_np = density_map.squeeze().cpu().numpy()
+# 将密度图插值到输入分辨率，便于视觉上更平滑
+density_map_vis = F.interpolate(
+    density_map,
+    size=img_tensor.shape[-2:],
+    mode="bilinear",
+    align_corners=False,
+)
+
+vis_total = density_map_vis.sum()
+if vis_total > 0:
+    density_map_vis *= density_map.sum() / vis_total
+
+density_np = density_map_vis.squeeze().cpu().numpy()
 
 
 # 归一化方便显示
@@ -51,12 +68,13 @@ plt.imshow(img)
 plt.axis("off")
 plt.title("Input Image")
 
-# 热力图（用 jet / plasma 等 colormap）
-plt.subplot(1, 2, 2)
-plt.imshow(density_norm, cmap=cm.jet)
-plt.colorbar(label="Density")
+# 热力图叠加在原图上，便于查看高密度区域
+overlay_ax = plt.subplot(1, 2, 2)
+overlay_ax.imshow(img)
+heatmap = overlay_ax.imshow(density_norm, cmap=cm.jet, alpha=0.6)
 plt.axis("off")
-plt.title(f"Density Map (count={predicted_count:.1f})")
+plt.title(f"Density Overlay (estimate={predicted_count:.1f})")
+plt.colorbar(heatmap, ax=overlay_ax, fraction=0.046, pad=0.04, label="Density")
 
 plt.tight_layout()
 plt.show()
